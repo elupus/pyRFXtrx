@@ -633,6 +633,9 @@ class RFXtrxTransport:
     def reset(self):
         """ reset the rfxtrx device """
 
+    def abort(self):
+        """ ask anhy blocking call ot abort."""
+
     def close(self):
         """ close connection to rfxtrx device """
 
@@ -704,6 +707,10 @@ class PySerialTransport(RFXtrxTransport):
         self.send(b'\x0D\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00')
         sleep(0.3)  # Should work with 0.05, but not for me
         self.serial.flushInput()
+
+    def abort(self):
+        """ ask any blocking call to abort."""
+        self._run_event.clear()
 
     def close(self):
         """ close connection to rfxtrx device """
@@ -779,6 +786,10 @@ class PyNetworkTransport(RFXtrxTransport):
         sleep(0.3)
         self.sock.sendall(b'')
 
+    def abort(self):
+        """ ask any blocking call to abort."""
+        self._run_event.clear()
+
     def close(self):
         """ close connection to rfxtrx device """
         self._run_event.clear()
@@ -816,7 +827,7 @@ class DummyTransport(RFXtrxTransport):
             print("RFXTRX: Send: " +
                   " ".join("0x{0:02x}".format(x) for x in pkt))
 
-    def close(self):
+    def abort(self):
         """Close."""
         self._close_event.set()
 
@@ -875,6 +886,7 @@ class Connect:
                     self.event_callback(event)
                 if isinstance(event, SensorEvent):
                     self._sensors[event.device.id_string] = event.device
+        self.transport.close()
 
     def sensors(self):
         """ Return all found sensors.
@@ -885,7 +897,7 @@ class Connect:
     def close_connection(self):
         """ Close connection to rfxtrx device """
         self._run_event.clear()
-        self.transport.close()
+        self.transport.abort()
         self._thread.join()
 
     def set_recmodes(self, modenames):
