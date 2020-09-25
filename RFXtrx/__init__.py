@@ -22,6 +22,7 @@ This module provides the base implementation for pyRFXtrx
 """
 # pylint: disable=R0903, invalid-name
 
+from RFXtrx.lowlevel import Security1
 import glob
 import socket
 import threading
@@ -370,6 +371,8 @@ def get_device_from_pkt(pkt):
         device = RfyDevice(pkt)
     elif isinstance(pkt, lowlevel.Chime):
         device = ChimeDevice(pkt)
+    elif isinstance(pkt, lowlevel.Security1):
+        device = SecurityDevice(pkt)
     else:
         device = RFXtrxDevice(pkt)
     return device
@@ -381,6 +384,7 @@ class SecurityDevice(RFXtrxDevice):
     def __init__(self, pkt):
         super().__init__(pkt)
         self.id_combined = pkt.id_combined
+        self.cmndseqnbr = 0
         self.STATUS = lowlevel.Security1.STATUS
 
     def send_status(self, transport, status):
