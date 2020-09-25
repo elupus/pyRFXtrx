@@ -377,9 +377,11 @@ def get_device_from_pkt(pkt):
 
 class SecurityDevice(RFXtrxDevice):
     """ Concrete class for a control device """
+
     def __init__(self, pkt):
         super().__init__(pkt)
         self.id_combined = pkt.id_combined
+        self.STATUS = lowlevel.Security1.STATUS
 
     def send_status(self, transport, status):
         """Trigger a status message on device."""
