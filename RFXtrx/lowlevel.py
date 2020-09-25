@@ -80,6 +80,68 @@ class Packet():
 
 
 ###############################################################################
+# InterfaceControl class
+###############################################################################
+
+class InterfaceControl(Packet):
+    """
+    Data class for the InterfaceControl packet type
+    """
+
+    TYPES = {
+        0x00: 'Mode',
+    }
+
+    def __str__(self):
+        return ("InterfaceControl [subtype={0}, cmnd={1}").format(self.type_string,
+                                       self.cmnd,)
+
+    def __init__(self):
+        """Constructor"""
+        super().__init__()
+        self.cmnd = None
+        self.tranceiver_type = None
+        self.output_power = None
+
+    def _decode_recmodes(self, data, index):
+        res = set()
+
+        for i in range(0, len(Status.RECMODES[index])):
+            if (data & (1 << i)) != 0:
+                res.add(Status.RECMODES[index][i])
+        return res
+
+    def load_receive(self, data):
+        """Load data from a bytearray"""
+        self.data = data
+        self.packetlength = data[0]
+        self.packettype = data[1]
+        self.subtype = data[2]
+        self.seqnbr = data[3]
+        self.cmnd = data[4]
+        self.tranceiver_type = data[5]
+        self.output_power = data[6]
+    
+        devs = set()
+        devs.update(self._decode_recmodes(data[7], 0))
+        devs.update(self._decode_recmodes(data[8], 1))
+        devs.update(self._decode_recmodes(data[9], 2))
+        devs.update(self._decode_recmodes(data[10], 3))
+        self.devices = sorted(devs)
+
+
+        self._set_strings()
+
+    def _set_strings(self):
+        """Translate loaded numeric values into convenience strings"""
+        if self.subtype in self.TYPES:
+            self.type_string = self.TYPES[self.subtype]
+        else:
+            # Degrade nicely for yet unknown subtypes
+            self.type_string = 'Unknown'
+
+
+###############################################################################
 # Status class
 ###############################################################################
 
@@ -2629,6 +2691,7 @@ class RollerTrol(Packet):
 
 
 PACKET_TYPES = {
+    0x00: InterfaceControl,
     0x01: Status,
     0x10: Lighting1,
     0x11: Lighting2,
