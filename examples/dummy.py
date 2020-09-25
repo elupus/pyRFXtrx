@@ -6,7 +6,12 @@ def recv_packet(s: socket.socket):
     if l is None:
         return None
     d = s.recv(l[0], socket.MSG_WAITALL)
-    return [*l *d]
+    if d is None:
+        return None
+    res = bytearray()
+    res.extend(l)
+    res.extend(d)
+    return res
 
 def main():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
