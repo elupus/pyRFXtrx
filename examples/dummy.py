@@ -3,10 +3,10 @@ import RFXtrx as rfxtrx
 
 def recv_packet(s: socket.socket):
     l = s.recv(1, socket.MSG_WAITALL)
-    if l is None:
+    if not l:
         return None
     d = s.recv(l[0], socket.MSG_WAITALL)
-    if d is None:
+    if not d:
         return None
     res = bytearray()
     res.extend(l)
@@ -26,8 +26,8 @@ def main():
                     break
                 packet = rfxtrx.lowlevel.parse(data)
                 print(packet)
-
-                conn.sendall(b'\x0D\x01\x00\x01\x02\x53\x45\x00\x0C\x2F\x01\x01\x00\x00')
+                if type(packet) == rfxtrx.lowlevel.InterfaceControl:
+                    conn.sendall(b'\x0D\x01\x00\x01\x02\x53\x45\x00\x0C\x2F\x01\x01\x00\x00')
 
 if __name__ == "__main__":
     try:
