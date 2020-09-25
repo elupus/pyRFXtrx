@@ -2356,6 +2356,21 @@ class Security1(SensorPacket):
         self.rssi = None
         self.security1_status_string = 'unknown'
 
+    def parse_id(self, subtype, id_string):
+        """( a string id into individual components"""
+        try:
+            self.packettype = 0x20
+            self.subtype = subtype
+            self.id_combined = int(id_string[:6], 16)
+            self.id1 = self.id_combined >> 16
+            self.id2 = self.id_combined >> 8 & 0xff
+            self.id3 = self.id_combined & 0xff
+            self._set_strings()
+        except ValueError as exc:
+            raise ValueError("Invalid id_string") from exc
+        if self.id_string != id_string:
+            raise ValueError("Invalid id_string")
+
     def load_receive(self, data):
         """Load data from a bytearray"""
         self.data = data
@@ -2372,6 +2387,25 @@ class Security1(SensorPacket):
         if self.subtype not in (0x03, 0x09, 0x0A):
             self.battery = self.rssi_byte & 0x0f
         self.rssi = self.rssi_byte >> 4
+        self._set_strings()
+
+    def set_transmit(self, subtype, seqnbr, id_combined, status):
+        """Load data from individual data fields"""
+        self.packetlength = 0x08
+        self.packettype = 0x20
+        self.subtype = subtype
+        self.seqnbr = seqnbr
+        self.id_combined = id_combined
+        self.id1 = id_combined >> 16
+        self.id2 = id_combined >> 8 & 0xff
+        self.id3 = id_combined & 0xff
+        self.security1_status = status
+        self.rssi_byte = 0
+        self.battery = 0
+        self.rssi = 0
+        self.data = bytearray([self.packetlength, self.packettype,
+                               self.subtype, self.seqnbr,
+                               self.id1, self.id2, self.id3, self.security1_status, self.rssi_byte])
         self._set_strings()
 
     def _set_strings(self):
