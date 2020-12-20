@@ -1116,6 +1116,104 @@ None
 >>> print(x.battery)
 9
 
+Security1
+---------
+
+>>> from RFXtrx import lowlevel
+>>> 
+>>> x = lowlevel.Security1()
+>>> print(x)
+Security1 [subtype=None, seqnbr=None, id=None, status=unknown, battery=None, rssi=None]
+>>> x.load_receive(bytearray([0x08, 0x20, 0x00, 0x4D, 0xD3, 0xDC, 0x54, 0x00, 0x89]))
+>>> print(x)
+Security1 [subtype=X10 Security, seqnbr=77, id=d3dc54:32, status=Normal, battery=9, rssi=8]
+>>> 
+>>> print(list(x.data))
+[8, 32, 0, 77, 211, 220, 84, 0, 137]
+>>> print(x.packetlength)
+8
+>>> print(x.packettype)
+32
+>>> print(x.subtype)
+0
+>>> print(x.type_string)
+X10 Security
+>>> print(x.seqnbr)
+77
+>>> print(x.id_combined)
+13884500
+>>> print(x.id_string)
+d3dc54:32
+>>> print(x.security1_status)
+0
+>>> print(x.rssi_byte)
+137
+>>> print(x.rssi)
+8
+>>> print(x.battery)
+9
+>>> 
+>>> x = lowlevel.Security1()
+>>> x.set_transmit(0x00, 77, 13884500, 0x00)
+>>> print(x)
+Security1 [subtype=X10 Security, seqnbr=77, id=d3dc54:32, status=Normal, battery=0, rssi=0]
+>>> 
+>>> print(list(x.data))
+[8, 32, 0, 77, 211, 220, 84, 0, 0]
+>>> print(x.packetlength)
+8
+>>> print(x.packettype)
+32
+>>> print(x.subtype)
+0
+>>> print(x.type_string)
+X10 Security
+>>> print(x.seqnbr)
+77
+>>> print(x.id1)
+211
+>>> print(x.id2)
+220
+>>> print(x.id3)
+84
+>>> print(x.id_string)
+d3dc54:32
+>>> print(x.security1_status)
+0
+>>> print(x.rssi_byte)
+0
+>>> print(x.rssi)
+0
+>>> print(x.battery)
+0
+>>> x = lowlevel.Security1()
+>>> x.parse_id(0, "d3dc54:32")
+>>> print(x)
+Security1 [subtype=X10 Security, seqnbr=None, id=d3dc54:32, status=unknown, battery=None, rssi=None]
+>>> print(x.id1)
+211
+>>> print(x.id2)
+220
+>>> print(x.id3)
+84
+>>> x.parse_id(0, "G:234")
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "RFXtrx/lowlevel.py", line 280, in parse_id
+    raise ValueError("Invalid id_string")
+ValueError: Invalid id_string
+>>> x.parse_id(0, "10234")
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "RFXtrx/lowlevel.py", line 280, in parse_id
+    raise ValueError("Invalid id_string")
+ValueError: Invalid id_string
+>>> x.parse_id(0, "1:23X")
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "RFXtrx/lowlevel.py", line 280, in parse_id
+    raise ValueError("Invalid id_string")
+ValueError: Invalid id_string
 
 
 UV
@@ -1141,4 +1239,3 @@ RFXMeter
 
 FS20
 ----
-
