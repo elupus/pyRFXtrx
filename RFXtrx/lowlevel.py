@@ -2405,7 +2405,8 @@ class Security1(SensorPacket):
         self.rssi = 0
         self.data = bytearray([self.packetlength, self.packettype,
                                self.subtype, self.seqnbr,
-                               self.id1, self.id2, self.id3, self.security1_status, self.rssi_byte])
+                               self.id1, self.id2, self.id3,
+                               self.security1_status, self.rssi_byte])
         self._set_strings()
 
     def _set_strings(self):
