@@ -22,7 +22,6 @@ This module provides the base implementation for pyRFXtrx
 """
 # pylint: disable=R0903, invalid-name
 
-from RFXtrx.lowlevel import Security1
 import glob
 import socket
 import threading
