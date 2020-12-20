@@ -2357,7 +2357,7 @@ class Security1(SensorPacket):
         self.security1_status_string = 'unknown'
 
     def parse_id(self, subtype, id_string):
-        """( a string id into individual components"""
+        """Parse a string id into individual components"""
         try:
             self.packettype = 0x20
             self.subtype = subtype
