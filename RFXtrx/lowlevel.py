@@ -2212,6 +2212,14 @@ class Chime(Packet):
     Mapping of numeric subtype values to strings, used in type_string
     """
 
+    COMMANDS = {
+        sound: "Sound {}".format(sound)
+        for sound in range(16)
+    }
+    """
+    Mapping of a chime sound to a descriptive name.
+    """
+
     def __str__(self):
         return ("Chime [subtype={0}, seqnbr={1}, id={2}, sound={3}, " +
                 "rssi={5}, cmdn={6}]") \
