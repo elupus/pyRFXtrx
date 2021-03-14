@@ -2288,7 +2288,7 @@ class Chime(Packet):
             # Degrade nicely for yet unknown subtypes
             self.type_string = self._UNKNOWN_TYPE.format(self.packettype,
                                                          self.subtype)
-        self.cmnd_string = "Chime"
+        self.cmnd_string = self.COMMANDS.get(self.sound, "Sound")
 
 ###############################################################################
 # Security1 class
