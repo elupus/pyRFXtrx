@@ -259,6 +259,7 @@ class CoreTestCase(TestCase):
         event = core.transport.parse(bytes_array)
         self.assertEqual(RFXtrx.SensorEvent, type(event))
         self.assertEqual(event.__str__(),"<class 'RFXtrx.SensorEvent'> device=[<class 'RFXtrx.SecurityDevice'> type='X10 Security' id='000000:32'] values=[('Battery numeric', 0), ('Rssi numeric', 0), ('Sensor Status', 'Normal')]")
+        event.device.send_status(core.transport, 0x01)
 
         #temp
         bytes_array = [0x0a, 0x50, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
