@@ -252,14 +252,14 @@ class CoreTestCase(TestCase):
         event = core.transport.parse(bytes_array)
         self.assertEqual(RFXtrx.ControlEvent, type(event))
         self.assertEqual(event.__str__(),"<class 'RFXtrx.ControlEvent'> device=[<class 'RFXtrx.ChimeDevice'> type='Byron SX' id='00:00'] values=[('Command', 'Chime'), ('Rssi numeric', 0), ('Sound', 0)]")
-        event.device.send_chime(core.transport, 1)
+        event.device.send_command(core.transport, 1)
 
         #security1
         bytes_array = [0x0a, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
         event = core.transport.parse(bytes_array)
         self.assertEqual(RFXtrx.SensorEvent, type(event))
         self.assertEqual(event.__str__(),"<class 'RFXtrx.SensorEvent'> device=[<class 'RFXtrx.SecurityDevice'> type='X10 Security' id='000000:32'] values=[('Battery numeric', 0), ('Rssi numeric', 0), ('Sensor Status', 'Normal')]")
-        event.device.send_status(core.transport, 0x01)
+        event.device.send_command(core.transport, 0x01)
 
         #temp
         bytes_array = [0x0a, 0x50, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]

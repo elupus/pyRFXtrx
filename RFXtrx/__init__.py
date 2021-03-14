@@ -384,16 +384,16 @@ class SecurityDevice(RFXtrxDevice):
         super().__init__(pkt)
         self.id_combined = pkt.id_combined
         self.cmndseqnbr = 0
-        self.STATUS = lowlevel.Security1.STATUS
+        self.COMMANDS = lowlevel.Security1.STATUS
 
-    def send_status(self, transport, status):
+    def send_command(self, transport, command):
         """Trigger a status message on device."""
         pkt = lowlevel.Security1()
         pkt.set_transmit(
             self.subtype,
             self.cmndseqnbr,
             self.id_combined,
-            status
+            command
         )
         self.cmndseqnbr = (self.cmndseqnbr + 1) % 5
         transport.send(pkt.data)
