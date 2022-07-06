@@ -2312,7 +2312,9 @@ class Chime(Packet):
              0x01: 'Byron MP001',
              0x02: 'Select Plus',
              0x03: 'Select Plus 3',
-             0x04: 'Envivo'}
+             0x04: 'Envivo',
+             0x05: '1byOne QH A19 rev10',
+             0x06: 'Byron DBY'}
     """
     Mapping of numeric subtype values to strings, used in type_string
     """
@@ -2336,6 +2338,7 @@ class Chime(Packet):
         super().__init__()
         self.id1 = None
         self.id2 = None
+        self.id4 = None
         self.sound = None
         self.rssi = None
         self.cmnd = None
@@ -2346,8 +2349,22 @@ class Chime(Packet):
         try:
             self.packettype = 0x16
             self.subtype = subtype
-            self.id1 = int(id_string[:2], 16)
-            self.id2 = int(id_string[3:5], 16)
+            self.id_combined = int(id_string.replace(":", ""), 16)
+            if self.subtype in (0x06, 0x07):
+                self.id1 = self.id_combined >> 24 & 0xff
+                self.id2 = self.id_combined >> 16 & 0xff
+                self.sound = self.id_combined >> 8 & 0xff
+                self.id4 = self.id_combined >> 0 & 0xff
+            elif self.subtype in (0x01, 0x02, 0x04, 0x05):
+                self.id1 = self.id_combined >> 16 & 0xff
+                self.id2 = self.id_combined >> 8 & 0xff
+                self.sound = self.id_combined >> 0 & 0xff
+                self.id4 = 0
+            else:
+                self.id1 = self.id_combined >> 8 & 0xff
+                self.id2 = self.id_combined >> 0 & 0xff
+                self.sound = 0
+                self.id4 = 0
             self._set_strings()
         except ValueError as exc:
             raise ValueError("Invalid id_string") from exc
@@ -2364,29 +2381,59 @@ class Chime(Packet):
         self.id1 = data[4]
         self.id2 = data[5]
         self.sound = data[6]
-        self.rssi_byte = data[7]
+        if len(data) > 8:
+            self.id4 = data[7]
+            self.rssi_byte = data[8]
+        else:
+            self.id4 = 0
+            self.rssi_byte = data[7]
+
+        if self.subtype in (0x06, 0x07):
+            self.id_combined = (self.id1 << 24 +
+                                self.id2 << 16 +
+                                self.sound << 8 +
+                                self.id4 << 0)
+
+        elif self.subtype in (0x01, 0x02, 0x04, 0x05):
+            self.id_combined = (self.id1 << 24 +
+                                self.id2 << 16 +
+                                self.sound << 8)
+        else:
+            self.id_combined = (self.id1 << 8 +
+                                self.id2 << 0)
+    
+      
         self.rssi = self.rssi_byte >> 4
         self._set_strings()
 
-    def set_transmit(self, subtype, seqnbr, id1, id2, sound):
+    def set_transmit(self, subtype, seqnbr, id_combined, sound):
         """Load data from individual data fields"""
         self.packetlength = 0x07
         self.packettype = 0x16
         self.subtype = subtype
         self.seqnbr = seqnbr
-        self.id1 = id1
+        self.id1 = 
         self.id2 = id2
         self.sound = sound
+        self.id4 = id4
         self.rssi = 0
         self.rssi_byte = (self.rssi << 4)
         self.data = bytearray([self.packetlength, self.packettype,
                                self.subtype, self.seqnbr,
                                self.id1, self.id2, self.sound,
-                               self.rssi_byte])
+                               self.id4, self.rssi_byte])
 
     def _set_strings(self):
         """Translate loaded numeric values into convenience strings"""
-        self.id_string = "{0:02x}:{1:02x}".format(self.id1, self.id2)
+        self.id_string = "{0:06x}:{1}".format(self.id_combined,
+                                              self.packettype)
+
+        if self.subtype in (0x01, 0x02, 0x04, 0x05):
+            self.id_string = "{0:02x}:{1:02x}:{2:02x}".format(self.id1, self.id2, self.id4)
+        elif self.subtype in (0x06, 0x07):
+            self.id_string = "{0:02x}:{1:02x}:{2:02x}:{3:02x}".format(self.id1, self.id2, self.sound, self.id4)
+        else:
+            self.id_string = "{0:02x}:{1:02x}".format(self.id1, self.id2)
         if self.subtype in self.TYPES:
             self.type_string = self.TYPES[self.subtype]
         else:
