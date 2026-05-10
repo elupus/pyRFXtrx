@@ -29,6 +29,9 @@ import socket
 import threading
 import logging
 from contextlib import suppress
+import asyncio
+from typing import Callable, Optional, Dict, List, Union
+
 
 from time import sleep
 
@@ -835,7 +838,6 @@ class ConnectionDone(ConnectionEvent):
 # DummySerial class
 ###############################################################################
 
-
 class _dummySerial:
     """ Dummy class for testing"""
     # pylint: disable=unused-argument
@@ -1241,3 +1243,154 @@ class Connect:
 
 class Core(Connect):
     """ The main class for rfxcom-py. Has changed name to Connect """
+
+
+class AsyncConnectBase(asyncio.protocols.BufferedProtocol,
+                       asyncio.protocols.Protocol):
+    """ Async protocol for parsing data from rfxtrx device """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._buffer = bytearray()
+        self._transport: 'asyncio.Future[asyncio.Transport]' = asyncio.Future()
+        self._pos = 0
+        self._len = 1
+
+    def data_received(self, data: bytes) -> None:
+        """Wrapper for non buffer protocol transports."""
+        self._buffer.extend(data)
+
+        while len(self._buffer) >= self._len:
+            if self._len == 1:
+                self._len = self._buffer[0] + 1
+            else:
+                try:
+                    self._packet_received(self._buffer[:self._len])
+                finally:
+                    self._packet_flush(self._len)
+
+    def _packet_received(self, data: bytes):
+        """ Packet received. """
+
+    def _packet_flush(self, skip: Union[int, None] = None):
+        """ Flush any received data so far. """
+        self._len = 1
+        if skip is None:
+            self._buffer.clear()
+        else:
+            self._buffer = self._buffer[skip:]
+
+    def connection_made(self, transport: asyncio.BaseTransport) -> None:
+        """ Connection to server was made. """
+        try:
+            assert isinstance(transport, asyncio.Transport)
+            self._transport.set_result(transport)
+        except Exception as exception:
+            self._transport.set_exception(exception)
+            raise
+
+        self._packet_flush()
+
+    def connection_lost(self, exc: Optional[Exception]) -> None:
+        """ Connection to server was lost. """
+        if exc:
+            _LOGGER.error("Unexpected disconnection: %s", exc)
+        self._transport = asyncio.Future()
+
+    def close(self):
+        """ Close down protocol. """
+        if self._transport.done():
+            transport = self._transport.result()
+            assert isinstance(transport, asyncio.Transport)
+            transport.close()
+
+
+class AsyncConnect(AsyncConnectBase):
+    """ Async protocol for parsing data from rfxtrx device """
+
+    def __init__(
+        self,
+        callback: Optional[Callable[[RFXtrxEvent], None]]
+    ) -> None:
+        super().__init__()
+        self._callback = callback
+        self._seq = 0
+        self._seq_future: Dict[int, 'asyncio.Future[ResponseEvent]'] = {}
+
+    def _packet_received(self, data: bytes):
+        """ Packet received. """
+        _LOGGER.debug(
+            "Recv: %s",
+            " ".join("0x{0:02x}".format(x) for x in data)
+        )
+
+        obj = parse(data)
+        if not obj:
+            return
+
+        _LOGGER.debug("Event: %s", obj)
+
+        if isinstance(obj, ResponseEvent):
+            fut = self._seq_future.get(obj.pkt.seqnbr)
+            if fut:
+                fut.set_result(obj)
+
+        self._call_callback(obj)
+
+    def _call_callback(self, obj: RFXtrxEvent):
+        try:
+            if self._callback:
+                self._callback(obj)
+        except Exception:  # pylint: disable=broad-except
+            _LOGGER.exception("Unexpected callback error: %s", obj)
+
+    def send(self, data: bytes) -> int:
+        """ Send a set of data to server. """
+        transport = self._transport.result()
+        assert isinstance(transport, asyncio.Transport)
+        seq = self._seq
+        data = bytes([*data[:3], seq, *data[4:]])
+        self._seq = (self._seq + 1) % 256
+        transport.write(data)
+        return seq
+
+    async def wait(self, seq) -> ResponseEvent:
+        """ Wait for a sequence number reply. """
+        assert seq not in self._seq_future
+        fut: 'asyncio.Future[ResponseEvent]' = (
+            asyncio.get_event_loop().create_future()
+        )
+        self._seq_future[seq] = fut
+        try:
+            return await fut
+        finally:
+            self._seq_future.pop(seq)
+
+    async def read(self, data: bytes) -> ResponseEvent:
+        """ Send a packet and wait for response """
+        seq = self.send(data)
+        return await self.wait(seq)
+
+    async def setup(self, modes: Optional[List[str]]):
+        """ Sends the Get Status command """
+        await self._transport
+        self.send(lowlevel.COMMAND_RESET)
+        await asyncio.sleep(0.5)
+
+        self._seq = 0
+        self._packet_flush()
+
+        status = await self.read(lowlevel.COMMAND_GET_STATUS)
+        assert isinstance(status, StatusEvent)
+        assert isinstance(status.pkt, lowlevel.Status)
+
+        if modes:
+            await self.read(
+                lowlevel.set_mode_packet(
+                    modes,
+                    status.pkt.tranceiver_type,
+                    status.pkt.output_power
+                )
+            )
+
+        await self.read(lowlevel.COMMAND_START)
